@@ -6,7 +6,25 @@ import ContactCard from './ContactCard';
 import MoodSelector from './MoodSelector';
 import FloatingCloud from './components/FloatingCloud';
 
+const API_BASE = "https://cloudy-check-in-production.up.railway.app";
+
 export default function HomePage() {
+  // ── Auth state ──────────────────────────────────────────────────────────
+  const [checkingSavedLogin, setCheckingSavedLogin] = useState(true);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<{
+    id: string;
+    email: string;
+    emojiUsername: string;
+  } | null>(null);
+  const [authView, setAuthView] = useState<'login' | 'register'>('login');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authEmojiUsername, setAuthEmojiUsername] = useState('');
+
+  // ── Existing app state ──────────────────────────────────────────────────
   const [showContacts, setShowContacts] = useState(false);
   const [selectedContact, setSelectedContact] = useState<{
     id: number;
@@ -15,7 +33,7 @@ export default function HomePage() {
     lastOnline: string;
   } | null>(null);
   const [action, setAction] = useState<'mood' | 'message' | null>(null);
-  const [selectedMood, setSelectedMood] = useState(null);
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodText, setMoodText] = useState('');
   const [messageText, setMessageText] = useState('');
   const [sentClouds, setSentClouds] = useState<{
@@ -24,12 +42,23 @@ export default function HomePage() {
     mood: string;
     timestamp: string;
   }[]>([]);
+
+  // On first load, check if we already have a saved login so people
+  // don't have to log in again every single time they open the app
+  useEffect(() => {
+    const savedToken = localStorage.getItem('cloudy_token');
+    const savedUser = localStorage.getItem('cloudy_user');
+    if (savedToken && savedUser) {
+      setAuthToken(savedToken);
+      setCurrentUser(JSON.parse(savedUser));
+    }
+    setCheckingSavedLogin(false);
+  }, []);
+
   useEffect(() => {
     const fetchCheckIns = async () => {
       try {
-        const response = await fetch(
-          "https://cloudy-check-in-production.up.railway.app/api/checkins/all"
-        );
+        const response = await fetch(`${API_BASE}/api/checkins/all`);
 
         const result = await response.json();
 
@@ -57,12 +86,207 @@ export default function HomePage() {
     setShowContacts(false);
   };
 
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE}/users/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: authEmail,
+          password: authPassword,
+          emojiUsername: authEmojiUsername
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setAuthPassword('');
+        setAuthView('login');
+        setAuthError('');
+      } else {
+        setAuthError(result.error || 'Something went wrong creating your account');
+      }
+    } catch (error: any) {
+      setAuthError(error.message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE}/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: authEmail,
+          password: authPassword
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setAuthToken(result.token);
+        setCurrentUser(result.user);
+        localStorage.setItem('cloudy_token', result.token);
+        localStorage.setItem('cloudy_user', JSON.stringify(result.user));
+        setAuthEmail('');
+        setAuthPassword('');
+      } else {
+        setAuthError(result.error || 'Invalid email or password');
+      }
+    } catch (error: any) {
+      setAuthError(error.message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    setAuthToken(null);
+    setCurrentUser(null);
+    localStorage.removeItem('cloudy_token');
+    localStorage.removeItem('cloudy_user');
+    setShowContacts(false);
+    setSelectedContact(null);
+    setAction(null);
+  };
+
+  // ── Still checking localStorage — show nothing/a blank moment rather ──
+  // ── than flash the login screen for a split second unnecessarily ──────
+  if (checkingSavedLogin) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-300 via-blue-300 to-purple-400 flex items-center justify-center p-4">
+        <p className="text-white font-bold text-lg">☁️ Loading...</p>
+      </div>
+    );
+  }
+
+  // ── Not logged in — show Login / Register screens ──────────────────────
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-300 via-blue-300 to-purple-400 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+          <h1 className="text-4xl font-bold text-center text-purple-600 mb-2">
+            ☁️ Cloudy Check-In
+          </h1>
+          <p className="text-center text-gray-700 mb-8 text-lg">
+            {authView === 'login' ? 'Welcome back' : 'Create your account'}
+          </p>
+
+          {authError && (
+            <div className="bg-red-50 text-red-600 text-sm font-medium rounded-xl p-3 mb-4 text-center">
+              {authError}
+            </div>
+          )}
+
+          {authView === 'login' ? (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <input
+                type="email"
+                placeholder="Email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                required
+                className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-purple-500"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                required
+                className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-purple-500"
+              />
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-2xl transition disabled:opacity-60"
+              >
+                {authLoading ? 'Logging in...' : 'Log In'}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleRegister} className="space-y-4">
+              <input
+                type="email"
+                placeholder="Email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                required
+                className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-purple-500"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-purple-500"
+              />
+              <input
+                type="text"
+                placeholder="e.g. 🐱 Khadeeja"
+                value={authEmojiUsername}
+                onChange={(e) => setAuthEmojiUsername(e.target.value)}
+                required
+                className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-purple-500"
+              />
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-2xl transition disabled:opacity-60"
+              >
+                {authLoading ? 'Creating account...' : 'Create Account'}
+              </button>
+            </form>
+          )}
+
+          <button
+            onClick={() => {
+              setAuthView(authView === 'login' ? 'register' : 'login');
+              setAuthError('');
+            }}
+            className="w-full text-purple-600 font-medium text-sm mt-6 hover:underline"
+          >
+            {authView === 'login'
+              ? "Don't have an account? Create one"
+              : 'Already have an account? Log in'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Logged in — the rest of the app, unchanged, except sender is now real ──
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-300 via-blue-300 to-purple-400 flex items-center justify-center p-4">
 
       {/* HOME SCREEN */}
       {!showContacts && !selectedContact && !action && (
         <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-medium text-gray-500">
+              {currentUser.emojiUsername}
+            </span>
+            <button
+              onClick={handleLogout}
+              className="text-xs font-medium text-gray-400 hover:text-gray-600"
+            >
+              Log out
+            </button>
+          </div>
           <h1 className="text-4xl font-bold text-center text-purple-600 mb-2">
             ☁️ Cloudy Check-In
           </h1>
@@ -166,7 +390,7 @@ export default function HomePage() {
                 placeholder="Write up to 100 words about your mood..."
                 value={moodText}
                 onChange={(e) => setMoodText(e.target.value)}
-                maxLength="100"
+                maxLength={100}
                 className="w-full h-20 p-3 border border-gray-300 rounded-xl mt-6 mb-4 focus:outline-none focus:border-purple-500"
               />
             </div>
@@ -175,7 +399,7 @@ export default function HomePage() {
               placeholder="Write something nice..."
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
-              className="..."
+              className="w-full h-20 p-3 border border-gray-300 rounded-xl mt-6 mb-4 focus:outline-none focus:border-purple-500"
             />
           )}
 
@@ -187,13 +411,16 @@ export default function HomePage() {
                   mood: selectedMood,
                   text: moodText || messageText,
                   type: action,
-                  sender: 'CurrentUser'  // For now, hardcoded (we'll fix later)
+                  sender: currentUser.emojiUsername
                 };
                 const response = await fetch(
-                  "https://cloudy-check-in-production.up.railway.app/api/checkins/send",
+                  `${API_BASE}/api/checkins/send`,
                   {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${authToken}`
+                    },
                     body: JSON.stringify(cloudData)
                   });
 
@@ -203,7 +430,7 @@ export default function HomePage() {
                   const newCloud = {
                     id: Date.now(),
                     to: selectedContact.name,
-                    mood: selectedMood,
+                    mood: selectedMood || '',
                     timestamp: new Date().toLocaleTimeString()
                   };
                   setSentClouds([newCloud, ...sentClouds]);
@@ -216,7 +443,7 @@ export default function HomePage() {
                 setSelectedMood(null);
                 setMoodText('');
                 setMessageText('');
-              } catch (error) {
+              } catch (error: any) {
                 alert('Error: ' + error.message);
               }
             }}
@@ -237,4 +464,4 @@ export default function HomePage() {
 
     </div>
   );
-} 
+}
