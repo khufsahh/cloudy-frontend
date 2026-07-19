@@ -1,6 +1,6 @@
 'use client';
-
-
+import { useEffect } from 'react';
+import io from 'socket.io-client';
 import { useState, useEffect } from 'react';
 import ContactCard from './ContactCard';
 import MoodSelector from './MoodSelector';
@@ -23,7 +23,30 @@ export default function HomePage() {
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authEmojiUsername, setAuthEmojiUsername] = useState('');
+  const socketRef = useRef(null);
 
+  // Socket.io connection
+  useEffect(() => {
+    const socket = io('https://cloudy-check-in-production.up.railway.app', {
+      reconnection: true,
+    });
+
+    socket.on('connect', () => {
+      console.log('Connected to Socket.io:', socket.id);
+    });
+
+    socket.on('newCloud', (cloudData) => {
+      console.log('Received new cloud:', cloudData);
+      // Add it to sentClouds so it displays immediately
+      setSentClouds((prev) => [cloudData, ...prev]);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from Socket.io');
+    });
+
+    return () => socket.disconnect();
+  }, []);
   // ── Existing app state ──────────────────────────────────────────────────
   const [showContacts, setShowContacts] = useState(false);
   const [selectedContact, setSelectedContact] = useState<{
@@ -413,6 +436,11 @@ export default function HomePage() {
                   type: action,
                   sender: currentUser.emojiUsername
                 };
+                // ADD THIS LINE RIGHT HERE:
+                if (socketRef.current) {
+                  socketRef.current.emit('cloudSent', cloudData);
+                }
+
                 const response = await fetch(
                   `${API_BASE}/api/checkins/send`,
                   {
