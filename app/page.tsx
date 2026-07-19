@@ -6,6 +6,7 @@ import ContactCard from './ContactCard';
 import MoodSelector from './MoodSelector';
 import FloatingCloud from './components/FloatingCloud';
 
+
 const API_BASE = "https://cloudy-check-in-production.up.railway.app";
 
 export default function HomePage() {
@@ -24,6 +25,10 @@ export default function HomePage() {
   const [authPassword, setAuthPassword] = useState('');
   const [authEmojiUsername, setAuthEmojiUsername] = useState('');
   const socketRef = useRef(null);
+  const [showAddFriend, setShowAddFriend] = useState(false);
+  const [friendEmail, setFriendEmail] = useState('');
+  const [userFriends, setUserFriends] = useState([]);
+  const [friendsLoading, setFriendsLoading] = useState(false);
 
   // Socket.io connection
   useEffect(() => {
@@ -161,6 +166,19 @@ export default function HomePage() {
       if (response.ok && result.success) {
         setAuthToken(result.token);
         setCurrentUser(result.user);
+        // Fetch user's friends
+        try {
+          const friendsResponse = await fetch(
+            `${API_BASE}/api/friends/${result.user.id}`,
+            {
+              headers: { 'Authorization': `Bearer ${result.token}` }
+            }
+          );
+          const friendsData = await friendsResponse.json();
+          setUserFriends(friendsData.friends || []);
+        } catch (error) {
+          console.error('Error fetching friends:', error);
+        }
         localStorage.setItem('cloudy_token', result.token);
         localStorage.setItem('cloudy_user', JSON.stringify(result.user));
         setAuthEmail('');
@@ -328,6 +346,64 @@ export default function HomePage() {
               ))}
             </div>
           )}
+
+          {/* ADD FRIEND BUTTON HERE */}
+          <button
+            onClick={() => setShowAddFriend(!showAddFriend)}
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl mb-4 transition"
+          >
+            {showAddFriend ? 'Cancel' : '+ Add Friend'}
+          </button>
+
+          {showAddFriend && (
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const response = await fetch(`${API_BASE}/api/friends/add`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                  },
+                  body: JSON.stringify({
+                    userId: currentUser.id,
+                    friendEmail: friendEmail
+                  })
+                });
+                const data = await response.json();
+                if (data.success) {
+                  setUserFriends(data.friends);
+                  setFriendEmail('');
+                  setShowAddFriend(false);
+                  alert('Friend added! ✅');
+                } else {
+                  alert('Error: ' + data.error);
+                }
+              } catch (error) {
+                alert('Error adding friend');
+              }
+            }} className="mb-4 p-4 bg-blue-50 rounded-xl">
+              <input
+                type="email"
+                placeholder="Enter friend's email"
+                value={friendEmail}
+                onChange={(e) => setFriendEmail(e.target.value)}
+                required
+                className="w-full p-2 border border-blue-300 rounded-lg mb-2 focus:outline-none"
+              />
+              <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">
+                Add Friend
+              </button>
+            </form>
+          )}
+
+          <button
+            onClick={handleCheckIn}
+            className="w-full bg-purple-400 hover:bg-purple-500 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105"
+          >
+            Check In
+          </button>
+
           <button
             onClick={handleCheckIn}
             className="w-full bg-purple-400 hover:bg-purple-500 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105"
