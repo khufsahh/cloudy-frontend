@@ -1,7 +1,7 @@
 'use client';
 
 import io from 'socket.io-client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ContactCard from './ContactCard';
 import MoodSelector from './MoodSelector';
 import FloatingCloud from './components/FloatingCloud';
