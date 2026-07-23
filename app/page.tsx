@@ -40,10 +40,24 @@ export default function HomePage() {
       console.log('Connected to Socket.io:', socket.id);
     });
 
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
     socket.on('newCloud', (cloudData) => {
       console.log('Received new cloud:', cloudData);
-      // Add it to sentClouds so it displays immediately
       setSentClouds((prev) => [cloudData, ...prev]);
+
+      // Show browser notification
+      if (Notification.permission === 'granted') {
+        new Notification('☁️ New Cloud Received!', {
+          body: `${cloudData.sender} sent you a ${cloudData.mood} cloud: ${cloudData.text}`,
+          icon: '☁️',
+          tag: 'cloudNotification',
+          requireInteraction: true
+        });
+      }
     });
 
     socket.on('disconnect', () => {
@@ -404,12 +418,6 @@ export default function HomePage() {
             Check In
           </button>
 
-          <button
-            onClick={handleCheckIn}
-            className="w-full bg-purple-400 hover:bg-purple-500 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105"
-          >
-            Check In
-          </button>
         </div>
       )}
 
