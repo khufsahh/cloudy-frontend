@@ -69,24 +69,31 @@ export default function HomePage() {
       // Also auto-show modal
       setSelectedCloud(cloudData);
     });
+    socket.on('disconnect', () => {
+      console.log('Disconnected from Socket.io');
+    });
+
+    socketRef.current = socket;
+    return () => socket.disconnect();
+  }, []);
 
 
-    // Show browser notification
-    if (Notification.permission === 'granted') {
-      new Notification('☁️ New Cloud Received!', {
-        body: `${cloudData.sender} sent you a ${cloudData.mood} cloud: ${cloudData.text}`,
-        icon: '☁️',
-        tag: 'cloudNotification',
-        requireInteraction: true
-      });
-    }
-  });
+  // Show browser notification
+  if (Notification.permission === 'granted') {
+    new Notification('☁️ New Cloud Received!', {
+      body: `${cloudData.sender} sent you a ${cloudData.mood} cloud: ${cloudData.text}`,
+      icon: '☁️',
+      tag: 'cloudNotification',
+      requireInteraction: true
+    });
+  }
+});
 
-  socket.on('disconnect', () => {
-    console.log('Disconnected from Socket.io');
-  });
+socket.on('disconnect', () => {
+  console.log('Disconnected from Socket.io');
+});
 
-  return () => socket.disconnect();
+return () => socket.disconnect();
 }, []);
 // ── Existing app state ──────────────────────────────────────────────────
 const [showContacts, setShowContacts] = useState(false);
