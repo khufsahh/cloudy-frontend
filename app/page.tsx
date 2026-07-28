@@ -36,6 +36,7 @@ export default function HomePage() {
     const socket = io('https://cloudy-check-in-production.up.railway.app', {
       reconnection: true,
     });
+    socketRef.current = socket;
 
     socket.on('connect', () => {
       console.log('Connected to Socket.io:', socket.id);
