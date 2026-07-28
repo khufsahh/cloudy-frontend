@@ -115,10 +115,12 @@ export default function HomePage() {
     fetchCheckIns();
   }, []);
 
-  const contacts = [
-    { id: 1, name: 'Abubakr', mood: '😸 Happy', lastOnline: '5 minutes ago' },
-    { id: 2, name: 'Khadeeja', mood: '😽 Missing You', lastOnline: 'Yesterday' }
-  ];
+  const contacts = userFriends.map((friend) => ({
+    id: friend._id,
+    name: friend.emojiUsername || friend.email,
+    mood: '☁️ Checking in...',
+    lastOnline: 'Now'
+  }));
 
   const handleCheckIn = () => {
     setShowContacts(true);
