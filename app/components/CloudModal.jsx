@@ -4,36 +4,38 @@ export default function CloudModal({ cloudData, onClose }) {
     if (!cloudData) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            {/* Modal Container - 7x5 inches */}
-            <div className="w-96 h-screen relative bg-gradient-to-b from-purple-300 via-pink-200 to-yellow-100 rounded-2xl shadow-2xl p-8 overflow-y-auto">
+        <>
+            {/* Right-side panel - 7x5 inches (fixed position) */}
+            <div className="fixed right-0 top-0 w-80 h-screen bg-gradient-to-b from-purple-200 via-pink-100 to-yellow-50 shadow-2xl overflow-y-auto z-50 rounded-l-3xl">
 
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 bg-white text-black rounded-full w-8 h-8 flex items-center justify-center hover:bg-gray-200"
+                    className="absolute top-4 right-4 bg-white/80 hover:bg-white text-gray-700 rounded-full w-10 h-10 flex items-center justify-center shadow-md transition"
                 >
                     ✕
                 </button>
 
-                {/* Cat Illustration (Placeholder) */}
-                <div className="text-6xl mb-6">🐱</div>
+                {/* Cat Illustration */}
+                <div className="text-8xl text-center mt-8 mb-6">🐱</div>
 
-                {/* Messages */}
-                <div className="space-y-4">
-                    <div className="bg-white rounded-lg p-4 shadow-md">
-                        <p className="font-bold text-purple-600">{cloudData.sender}</p>
-                        <p className="text-gray-700">shared mood: {cloudData.mood}</p>
+                {/* Messages Container */}
+                <div className="space-y-4 p-6">
+                    <div className="bg-white/70 backdrop-blur rounded-2xl p-4 shadow-sm border border-white/50">
+                        <p className="font-semibold text-purple-700">{cloudData.sender}</p>
+                        <p className="text-gray-600 text-sm mt-2">shared mood:</p>
+                        <p className="text-lg mt-1">{cloudData.mood}</p>
                     </div>
 
                     {cloudData.text && (
-                        <div className="bg-white rounded-lg p-4 shadow-md">
-                            <p className="font-bold text-purple-600">{cloudData.sender}</p>
-                            <p className="text-gray-700">shared text: "{cloudData.text}"</p>
+                        <div className="bg-white/70 backdrop-blur rounded-2xl p-4 shadow-sm border border-white/50">
+                            <p className="font-semibold text-purple-700">{cloudData.sender}</p>
+                            <p className="text-gray-600 text-sm mt-2">shared text:</p>
+                            <p className="text-sm mt-2 text-gray-700">"{cloudData.text}"</p>
                         </div>
                     )}
                 </div>
             </div>
-        </div>
+        </>
     );
 }
