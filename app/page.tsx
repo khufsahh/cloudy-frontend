@@ -6,6 +6,7 @@ import ContactCard from './ContactCard';
 import MoodSelector from './MoodSelector';
 import FloatingCloud from './components/FloatingCloud';
 import CloudModal from './components/CloudModal';
+import FloatingCloudNotification from './components/FloatingCloudNotification';
 
 const API_BASE = "https://cloudy-check-in-production.up.railway.app";
 
@@ -21,6 +22,7 @@ export default function HomePage() {
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [floatingClouds, setFloatingClouds] = useState([]);
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authEmojiUsername, setAuthEmojiUsername] = useState('');
@@ -46,30 +48,21 @@ export default function HomePage() {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
-
     socket.on('newCloud', (cloudData) => {
       console.log('Received new cloud:', cloudData);
       setSentClouds((prev) => [cloudData, ...prev]);
 
-      // Show browser notification
-      if (Notification.permission === 'granted') {
-        const notif = new Notification('☁️ New Cloud Received!', {
-          body: `${cloudData.sender} sent you a cloud!`,
-          icon: '☁️',
-          tag: 'cloudNotification',
-          requireInteraction: true
-        });
+      // Add floating cloud
+      const cloudId = Date.now();
+      setFloatingClouds((prev) => [...prev, { ...cloudData, id: cloudId }]);
 
-        // Click notification to open modal
-        notif.onclick = () => {
-          setSelectedCloud(cloudData);
-          window.focus();
-        };
-      }
-
-      // Also auto-show modal
-      setSelectedCloud(cloudData);
+      // Remove after 8 seconds
+      setTimeout(() => {
+        setFloatingClouds((prev) => prev.filter((c) => c.id !== cloudId));
+      }, 8000);
     });
+
+
     socket.on('disconnect', () => {
       console.log('Disconnected from Socket.io');
     });
@@ -443,6 +436,15 @@ export default function HomePage() {
           onClose={() => setSelectedCloud(null)}
         />
       )}
+
+      {floatingClouds.map((cloud) => (
+        <FloatingCloudNotification
+          key={cloud.id}
+          cloudData={cloud}
+          onClick={() => setSelectedCloud(cloud)}
+          onClose={() => setFloatingClouds((prev) => prev.filter((c) => c.id !== cloud.id))}
+        />
+      ))}
 
       {/* CONTACT LIST SCREEN */}
       {showContacts && !selectedContact && !action && (
