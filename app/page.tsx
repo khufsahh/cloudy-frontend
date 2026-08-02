@@ -13,6 +13,7 @@ const API_BASE = "https://cloudy-check-in-production.up.railway.app";
 export default function HomePage() {
   // ── Auth state ──────────────────────────────────────────────────────────
   const [checkingSavedLogin, setCheckingSavedLogin] = useState(true);
+  const [notifPermission, setNotifPermission] = useState<string>('default');
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<{
     id: string;
@@ -33,6 +34,7 @@ export default function HomePage() {
   const [selectedCloud, setSelectedCloud] = useState(null);
   const [friendsLoading, setFriendsLoading] = useState(false);
 
+
   // Socket.io connection
   useEffect(() => {
     const socket = io('https://cloudy-check-in-production.up.railway.app', {
@@ -45,6 +47,7 @@ export default function HomePage() {
     });
 
     // Request notification permission
+
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
@@ -60,6 +63,15 @@ export default function HomePage() {
       setTimeout(() => {
         setFloatingClouds((prev) => prev.filter((c) => c.id !== cloudId));
       }, 8000);
+
+      // Fire OS-level notification if tab isn't focused
+      if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+        const notif = new Notification('☁️ Cloudy Check-In', {
+          body: `${cloudData.sender} sent you a cloud`,
+          icon: '/favicon.ico',
+        });
+        notif.onclick = () => window.focus();
+      }
     });
 
 
@@ -102,6 +114,13 @@ export default function HomePage() {
       setCurrentUser(JSON.parse(savedUser));
     }
     setCheckingSavedLogin(false);
+  }, []);
+
+
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotifPermission(Notification.permission);
+    }
   }, []);
 
   useEffect(() => {
@@ -357,6 +376,22 @@ export default function HomePage() {
           <p className="text-center text-gray-700 mb-8 text-lg">
             Hiiiii, check in with your person
           </p>
+          <p className="text-center text-gray-700 mb-8 text-lg">
+            Hiiiii, check in with your person
+          </p>
+
+          {notifPermission !== 'granted' && (
+            <button
+              onClick={async () => {
+                const result = await Notification.requestPermission();
+                setNotifPermission(result);
+              }}
+              className="w-full bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-3 px-6 rounded-xl mb-4 transition"
+            >
+              🔔 Enable Notifications
+            </button>
+          )}
+
           {sentClouds.length > 0 && (
             <div className="bg-purple-50 p-4 rounded-xl mb-6 max-h-40 overflow-y-auto">
               <p className="text-sm font-bold text-purple-600 mb-3">Recent Clouds Sent:</p>
