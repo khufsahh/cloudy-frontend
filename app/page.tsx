@@ -9,6 +9,19 @@ import CloudModal from './components/CloudModal';
 import FloatingCloudNotification from './components/FloatingCloudNotification';
 
 const API_BASE = "https://cloudy-check-in-production.up.railway.app";
+const getTimeAgo = (timestamp: string) => {
+  const diffMs = Date.now() - new Date(timestamp).getTime();
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'Yesterday';
+  return `${days} days ago`;
+};
+
+
 
 export default function HomePage() {
   // ── Auth state ──────────────────────────────────────────────────────────
@@ -141,12 +154,21 @@ export default function HomePage() {
     fetchCheckIns();
   }, []);
 
-  const contacts = userFriends.map((friend) => ({
-    id: friend._id,
-    name: friend.emojiUsername || friend.email,
-    mood: '☁️ Checking in...',
-    lastOnline: 'Now'
-  }));
+  const contacts = userFriends.map((friend) => {
+    const friendName = friend.emojiUsername || friend.email;
+    const friendClouds = sentClouds.filter(
+      (c: any) => c.sender === friendName || c.receiver === friendName
+    );
+    const lastCloud = friendClouds[0];
+
+    return {
+      id: friend._id,
+      name: friendName,
+      mood: lastCloud ? lastCloud.mood : '☁️ No check-ins yet',
+      lastOnline: lastCloud ? getTimeAgo(lastCloud.timestamp) : 'No check-ins yet'
+    };
+  });
+
 
   const handleCheckIn = () => {
     setShowContacts(true);
