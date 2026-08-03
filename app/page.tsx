@@ -10,7 +10,9 @@ import FloatingCloudNotification from './components/FloatingCloudNotification';
 
 const API_BASE = "https://cloudy-check-in-production.up.railway.app";
 const getTimeAgo = (timestamp: string) => {
+  if (!timestamp) return 'Just now';
   const diffMs = Date.now() - new Date(timestamp).getTime();
+  if (isNaN(diffMs)) return 'Just now';
   const minutes = Math.floor(diffMs / 60000);
   if (minutes < 1) return 'Just now';
   if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
@@ -20,7 +22,6 @@ const getTimeAgo = (timestamp: string) => {
   if (days === 1) return 'Yesterday';
   return `${days} days ago`;
 };
-
 
 
 export default function HomePage() {
@@ -118,18 +119,31 @@ export default function HomePage() {
     timestamp: string;
   }[]>([]);
 
-  // On first load, check if we already have a saved login so people
-  // don't have to log in again every single time they open the app
   useEffect(() => {
-    const savedToken = localStorage.getItem('cloudy_token');
-    const savedUser = localStorage.getItem('cloudy_user');
-    if (savedToken && savedUser) {
-      setAuthToken(savedToken);
-      setCurrentUser(JSON.parse(savedUser));
-    }
-    setCheckingSavedLogin(false);
-  }, []);
+    const restoreSession = async () => {
+      const savedToken = localStorage.getItem('cloudy_token');
+      const savedUser = localStorage.getItem('cloudy_user');
+      if (savedToken && savedUser) {
+        const parsedUser = JSON.parse(savedUser);
+        setAuthToken(savedToken);
+        setCurrentUser(parsedUser);
 
+        try {
+          const friendsResponse = await fetch(
+            `${API_BASE}/api/friends/${parsedUser.id}`,
+            { headers: { 'Authorization': `Bearer ${savedToken}` } }
+          );
+          const friendsData = await friendsResponse.json();
+          setUserFriends(friendsData.friends || []);
+        } catch (error) {
+          console.log('Error restoring friends:', error);
+        }
+      }
+      setCheckingSavedLogin(false);
+    };
+
+    restoreSession();
+  }, []);
 
   useEffect(() => {
     if ('Notification' in window) {
@@ -618,7 +632,8 @@ export default function HomePage() {
                   mood: selectedMood,
                   text: moodText || messageText,
                   type: action,
-                  sender: currentUser.emojiUsername
+                  sender: currentUser.emojiUsername,
+                  timestamp: new Date().toISOString()
                 };
                 // ADD THIS LINE RIGHT HERE:
                 if (socketRef.current) {

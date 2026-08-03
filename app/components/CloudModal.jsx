@@ -22,9 +22,10 @@ export default function CloudModal({ messages, onClose }) {
                             key={msg._id || index}
                             className="bg-white/70 backdrop-blur rounded-2xl p-4 shadow-sm border border-white/50"
                         >
-                            <p className="font-semibold text-purple-700">{msg.sender}</p>
-                            <p className="text-gray-600 text-sm mt-2">shared mood:</p>
-                            <p className="text-lg mt-1">{msg.mood}</p>
+                            <p className="text-lg">
+                                <span className="font-semibold text-purple-700">{msg.sender}</span>
+                                {' '}is <span className="font-semibold">{msg.mood}</span>
+                            </p>
 
                             {msg.text && (
                                 <p className="text-sm mt-2 text-gray-700">"{msg.text}"</p>
