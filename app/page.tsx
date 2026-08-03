@@ -529,27 +529,51 @@ export default function HomePage() {
           </h1>
 
           {contacts.map((contact) => (
-            <ContactCard
-              key={contact.id}
-              name={contact.name}
-              mood={contact.mood}
-              lastOnline={contact.lastOnline}
-              onClick={async () => {
-                setSelectedContact(contact);
-                try {
-                  const response = await fetch(
-                    `${API_BASE}/api/checkins/conversation/${currentUser.emojiUsername}/${contact.name}`
-                  );
-                  const result = await response.json();
-                  if (result.success) {
-                    setConversation(result.checkIns);
+            <div key={contact.id} className="flex items-center gap-2 mb-4">
+              <div className="flex-1">
+                <ContactCard
+                  name={contact.name}
+                  mood={contact.mood}
+                  lastOnline={contact.lastOnline}
+                  onClick={async () => {
+                    setSelectedContact(contact);
+                    try {
+                      const response = await fetch(
+                        `${API_BASE}/api/checkins/conversation/${currentUser.emojiUsername}/${contact.name}`
+                      );
+                      const result = await response.json();
+                      if (result.success) {
+                        setConversation(result.checkIns);
+                      }
+                    } catch (error) {
+                      console.log('Error fetching conversation:', error);
+                    }
+                  }}
+                />
+              </div>
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!confirm(`Remove ${contact.name} as a friend?`)) return;
+                  try {
+                    const response = await fetch(`${API_BASE}/api/friends/remove`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ userId: currentUser.id, friendId: contact.id })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                      setUserFriends(data.friends);
+                    }
+                  } catch (error) {
+                    alert('Error removing friend');
                   }
-                } catch (error) {
-                  console.log('Error fetching conversation:', error);
-                }
-              }}
-
-            />
+                }}
+                className="text-red-400 hover:text-red-600 text-sm font-bold px-2"
+              >
+                ✕
+              </button>
+            </div>
           ))}
 
           <button
