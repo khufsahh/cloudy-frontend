@@ -45,6 +45,7 @@ export default function HomePage() {
   const [friendEmail, setFriendEmail] = useState('');
   const [userFriends, setUserFriends] = useState([]);
   const [selectedCloud, setSelectedCloud] = useState(null);
+  const [conversation, setConversation] = useState<any[]>([]);
   const [friendsLoading, setFriendsLoading] = useState(false);
 
 
@@ -487,10 +488,13 @@ export default function HomePage() {
         </div>
       )}
 
-      {selectedCloud && (
+      {(selectedCloud || conversation.length > 0) && (
         <CloudModal
-          cloudData={selectedCloud}
-          onClose={() => setSelectedCloud(null)}
+          messages={selectedCloud ? [selectedCloud] : conversation}
+          onClose={() => {
+            setSelectedCloud(null);
+            setConversation([]);
+          }}
         />
       )}
 
@@ -516,7 +520,21 @@ export default function HomePage() {
               name={contact.name}
               mood={contact.mood}
               lastOnline={contact.lastOnline}
-              onClick={() => setSelectedContact(contact)}
+              onClick={async () => {
+                setSelectedContact(contact);
+                try {
+                  const response = await fetch(
+                    `${API_BASE}/api/checkins/conversation/${currentUser.emojiUsername}/${contact.name}`
+                  );
+                  const result = await response.json();
+                  if (result.success) {
+                    setConversation(result.checkIns);
+                  }
+                } catch (error) {
+                  console.log('Error fetching conversation:', error);
+                }
+              }}
+
             />
           ))}
 
